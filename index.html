@@ -26,7 +26,8 @@ button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
 button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
 .row{display:flex;gap:8px;margin-top:8px}
 #log{min-height:3.6em;white-space:pre-line;font-size:15px;line-height:1.4}
-#aq{font-size:14px;line-height:1.5;white-space:pre-line}
+.aqtext{font-size:14px;line-height:1.5;white-space:pre-line}
+.hidden{display:none}
 .item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 2px;font-size:13px;border-bottom:2px dashed #ffffff33}
 .item.eq{color:var(--ok)}
 .item button{width:auto;padding:5px 10px;font-size:12px;box-shadow:2px 2px 0 #000}
@@ -36,6 +37,7 @@ button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
 <body>
 <div class="wrap">
 <h1>🎣 픽셀 낚시터</h1>
+<div id="gamePage">
 <canvas id="c" width="240" height="135"></canvas>
 <div class="box"><div id="hud"></div><div class="bar"><i id="xp" style="background:var(--acc)"></i></div></div>
 <div class="box">
@@ -44,8 +46,14 @@ button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
 <div class="bar"><i id="tn"></i><div class="zone"></div><div class="dz"></div></div>
 </div>
 <div class="box"><div id="log"></div><div class="row"><button id="act">🎣 던지기</button></div></div>
-<div class="box"><div>수족관 TOP 5</div><div id="aq"></div></div>
-<div class="box"><div>🛒 낚시상점 <span id="eqlab" style="font-size:12px;opacity:.7"></span></div><div id="shop"></div></div>
+<div class="box"><div>🐟 최근 TOP 3</div><div id="aqPrev" class="aqtext"></div>
+<div class="row"><button class="sm" id="navShop">🛒 상점</button><button class="sm" id="navAq">🐠 수족관</button></div>
+</div>
+</div>
+<div class="box hidden" id="shopPage"><div>🛒 낚시상점 <span id="eqlab" style="font-size:12px;opacity:.7"></span></div><div id="shop"></div>
+<div class="row"><button class="sm" id="backShop">← 돌아가기</button></div></div>
+<div class="box hidden" id="aqPage"><div>🐠 수족관 (전체)</div><div id="aqFull" class="aqtext"></div>
+<div class="row"><button class="sm" id="backAq">← 돌아가기</button></div></div>
 </div>
 <script>
 const $=s=>document.getElementById(s),cv=$('c'),g=cv.getContext('2d'),W=240,H=135;
@@ -71,7 +79,12 @@ function lvcheck(){let up=false;while(P.lv<100&&P.exp>=need(P.lv)){P.lv++;up=tru
 function hud(){const lo=P.lv>1?need(P.lv-1):0,hi=need(P.lv);
  $('hud').textContent=`Lv.${P.lv}  EXP ${P.exp}/${hi}  💰${P.cr}  남은 횟수 ${P.left}회`;
  $('xp').style.width=Math.max(0,Math.min(100,(P.exp-lo)/(hi-lo)*100))+'%'}
-function aq(){$('aq').textContent=P.fish.length?P.fish.slice(0,5).map((f,i)=>`${i+1}. ${f.n} ${f.s}cm`).join('\n'):'아직 잡은 물고기가 없어요'}
+function aq(){const t=P.fish.length?P.fish.map((f,i)=>`${i+1}. ${f.n} ${f.s}cm`).join('\n'):'아직 잡은 물고기가 없어요';
+ $('aqFull').textContent=t;
+ $('aqPrev').textContent=P.fish.length?P.fish.slice(0,3).map((f,i)=>`${i+1}. ${f.n} ${f.s}cm`).join('\n'):'아직 없음'}
+function showGame(){$('gamePage').classList.remove('hidden');$('shopPage').classList.add('hidden');$('aqPage').classList.add('hidden')}
+function showShop(){$('gamePage').classList.add('hidden');$('aqPage').classList.add('hidden');$('shopPage').classList.remove('hidden');shop()}
+function showAqPage(){$('gamePage').classList.add('hidden');$('shopPage').classList.add('hidden');$('aqPage').classList.remove('hidden');aq()}
 function equipBonus(){return GEAR.rod.items[P.rod].b*GEAR.reel.items[P.reel].b*GEAR.lure.items[P.lure].b}
 function buy(cat,name){const it=GEAR[cat].items[name];if(P[cat]===name)return;
  if(P.cr<it.p){say('❌ 크레딧이 부족해요');return}
@@ -170,11 +183,15 @@ function loop(n){
 
 $('act').addEventListener('pointerdown',e=>{e.preventDefault();act()});
 cv.addEventListener('pointerdown',e=>{e.preventDefault();act()});
+$('navShop').addEventListener('pointerdown',e=>{e.preventDefault();showShop()});
+$('navAq').addEventListener('pointerdown',e=>{e.preventDefault();showAqPage()});
+$('backShop').addEventListener('pointerdown',e=>{e.preventDefault();showGame()});
+$('backAq').addEventListener('pointerdown',e=>{e.preventDefault();showGame()});
 addEventListener('pointerup',()=>{hold=false});
 addEventListener('pointercancel',()=>{hold=false});
 addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat){e.preventDefault();act()}});
 addEventListener('keyup',e=>{if(e.code==='Space')hold=false});
-hud();aq();shop();say('버튼, 화면 터치, 스페이스바로 찌를 던져보세요!');
+hud();aq();say('버튼, 화면 터치, 스페이스바로 찌를 던져보세요!');
 requestAnimationFrame(loop);
 </script>
 </body>
