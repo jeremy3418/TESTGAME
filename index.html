@@ -27,6 +27,10 @@ button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
 .row{display:flex;gap:8px;margin-top:8px}
 #log{min-height:3.6em;white-space:pre-line;font-size:15px;line-height:1.4}
 #aq{font-size:14px;line-height:1.5;white-space:pre-line}
+.item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 2px;font-size:13px;border-bottom:2px dashed #ffffff33}
+.item.eq{color:var(--ok)}
+.item button{width:auto;padding:5px 10px;font-size:12px;box-shadow:2px 2px 0 #000}
+.cat{margin-top:8px;font-size:14px;color:var(--acc)}
 </style>
 </head>
 <body>
@@ -41,16 +45,23 @@ button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
 </div>
 <div class="box"><div id="log"></div><div class="row"><button id="act">🎣 던지기</button></div></div>
 <div class="box"><div>수족관 TOP 5</div><div id="aq"></div></div>
+<div class="box"><div>🛒 낚시상점 <span id="eqlab" style="font-size:12px;opacity:.7"></span></div><div id="shop"></div></div>
 </div>
 <script>
 const $=s=>document.getElementById(s),cv=$('c'),g=cv.getContext('2d'),W=240,H=135;
 const NAMES=['새우','가재','문어','오징어','돌고래','가오리','갈치','광어','농어','대구','도미','방어','복어','상어','연어','우럭','장어','거북이','고무신','쓰레기','황금잉어','킹크랩','전복','참돔','해마','잠수함'];
 const need=l=>Math.floor(100*Math.pow(3.5,l-1));
 const today=()=>new Date().toISOString().slice(0,10);
-const fresh=()=>({lv:1,exp:0,cr:0,left:3,fish:[],day:today()});
+const GEAR={
+ rod:{label:'낚시대',items:{'대나무 낚시대':{p:0,b:1},'유리섬유 낚시대':{p:10000,b:1.3},'탄소섬유 낚시대':{p:30000,b:1.8},'카본 낚시대':{p:90000,b:2.5}}},
+ reel:{label:'릴',items:{'기본 릴':{p:0,b:1},'스피닝 릴':{p:8000,b:1.2},'베이트캐스팅 릴':{p:25000,b:1.5},'전동 릴':{p:70000,b:2}}},
+ lure:{label:'루어',items:{'기본 미끼':{p:0,b:1},'실리콘 웜':{p:5000,b:1.2},'스푼 루어':{p:20000,b:1.4},'메탈 지그':{p:50000,b:1.8}}},
+};
+const fresh=()=>({lv:1,exp:0,cr:0,left:10,fish:[],day:today(),rod:'대나무 낚시대',reel:'기본 릴',lure:'기본 미끼'});
 let P;try{P=JSON.parse(localStorage.getItem('pxfish'))}catch(e){}
 P=P||fresh();
-if(P.day!==today()){P.left=3;P.day=today();try{localStorage.setItem('pxfish',JSON.stringify(P))}catch(e){}}
+P.rod=P.rod||'대나무 낚시대';P.reel=P.reel||'기본 릴';P.lure=P.lure||'기본 미끼';
+if(P.day!==today()){P.left=10;P.day=today();try{localStorage.setItem('pxfish',JSON.stringify(P))}catch(e){}}
 const save=()=>{try{localStorage.setItem('pxfish',JSON.stringify(P))}catch(e){}};
 let over=0,S="idle",T=0,hold=false,F=null,prog=0,ten=0,surge=0,nextSurge=0,time=0,bob={x:170};
 let AC;function beep(f,d=.08,v=.04){try{AC=AC||new AudioContext();const o=AC.createOscillator(),a=AC.createGain();o.type='square';o.frequency.value=f;a.gain.value=v;o.connect(a);a.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
@@ -61,10 +72,23 @@ function hud(){const lo=P.lv>1?need(P.lv-1):0,hi=need(P.lv);
  $('hud').textContent=`Lv.${P.lv}  EXP ${P.exp}/${hi}  💰${P.cr}  남은 횟수 ${P.left}회`;
  $('xp').style.width=Math.max(0,Math.min(100,(P.exp-lo)/(hi-lo)*100))+'%'}
 function aq(){$('aq').textContent=P.fish.length?P.fish.slice(0,5).map((f,i)=>`${i+1}. ${f.n} ${f.s}cm`).join('\n'):'아직 잡은 물고기가 없어요'}
+function equipBonus(){return GEAR.rod.items[P.rod].b*GEAR.reel.items[P.reel].b*GEAR.lure.items[P.lure].b}
+function buy(cat,name){const it=GEAR[cat].items[name];if(P[cat]===name)return;
+ if(P.cr<it.p){say('❌ 크레딧이 부족해요');return}
+ P.cr-=it.p;P[cat]=name;save();hud();shop();say(`✅ ${name} 장착 완료!`)}
+function shop(){let h='';
+ for(const cat in GEAR){h+=`<div class="cat">${GEAR[cat].label}</div>`;
+  for(const name in GEAR[cat].items){const it=GEAR[cat].items[name],eq=P[cat]===name;
+   h+=`<div class="item${eq?' eq':''}"><span>${name}${it.p?` (${it.p.toLocaleString()})`:''}</span>`+
+      (eq?'<b>✅장착중</b>':`<button data-c="${cat}" data-n="${name}">구매</button>`)+'</div>';}}
+ $('shop').innerHTML=h;
+ $('shop').querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();buy(b.dataset.c,b.dataset.n)}));
+ $('eqlab').textContent=`(장비 보너스 x${equipBonus().toFixed(2)})`;
+}
 
 function act(){
  if(S==='idle'){
-  if(P.left<=0){say('오늘 낚시 횟수를 모두 썼어요.\n아래 "하루 지나기"로 횟수를 채워보세요.');return}
+  if(P.left<=0){say('오늘 낚시 횟수를 모두 썼어요.\n내일 다시 와주세요!');return}
   P.left--;S='wait';T=1.5+Math.random()*2.5;bob.x=150+Math.random()*50;say('찌를 던졌다... 입질을 기다리는 중');beep(300);save();hud();
  }else if(S==='bite')hook();
  else if(S==='reel')hold=true;
@@ -75,7 +99,7 @@ function hook(){
  if(Math.random()<.03){treasure();return}
  const lv=P.lv;let size,ratio;
  if(lv>=2&&Math.random()<.65){size=1+Math.random()*9|0;ratio=size/(lv*10)}
- else{let raw=(0.7+Math.random()*.5)*lv*10;while(Math.pow(lv,1/3)*21<Math.random()*100)raw*=1+Math.random()*.04;size=Math.floor(raw);ratio=raw/(lv*10)}
+ else{let raw=(0.7+Math.random()*.5)*lv*10;while(Math.pow(lv,1/3)*21<Math.random()*100)raw*=1+Math.random()*.04;raw*=equipBonus();size=Math.floor(raw);ratio=raw/(lv*10)}
  F={name:NAMES[Math.random()*NAMES.length|0],size,ratio,ph:Math.random()*6};
  S="reel";prog=25;ten=20;surge=0;over=0;nextSurge=1+Math.random()*1.5;hold=false;
  say(ratio>=1.3?'💥 엄청난 대물이다!\n누르고 있으면 감기지만 너무 세게 당기면 줄이 끊어져요':'걸렸다!\n누르고 있으면 릴이 감겨요. 장력이 빨간 구간에 닿으면 줄이 끊어져요');beep(660,.15);
@@ -150,7 +174,7 @@ addEventListener('pointerup',()=>{hold=false});
 addEventListener('pointercancel',()=>{hold=false});
 addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat){e.preventDefault();act()}});
 addEventListener('keyup',e=>{if(e.code==='Space')hold=false});
-hud();aq();say('버튼, 화면 터치, 스페이스바로 찌를 던져보세요!');
+hud();aq();shop();say('버튼, 화면 터치, 스페이스바로 찌를 던져보세요!');
 requestAnimationFrame(loop);
 </script>
 </body>
